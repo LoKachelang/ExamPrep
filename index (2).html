@@ -2,6 +2,29 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ExamPrep Portal - Government Exam Mock Tests</title>
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+   <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyAQ-lyf43GXdlm4FnH6AZ8krv9hAZVYYU0",
+    authDomain: "lokachelang.firebaseapp.com",
+    projectId: "lokachelang",
+    storageBucket: "lokachelang.firebasestorage.app",
+    messagingSenderId: "855469324256",
+    appId: "1:855469324256:web:4d5c146d4c0d5613db9d85",
+    measurementId: "G-DWHJ1HZDE4"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
