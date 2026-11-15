@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ExamPrep Portal - Government Exam Mock Tests</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Public Sans',system-ui,sans-serif;background:#eef3fa;color:#16233a}
+.stripe{height:4px;background:linear-gradient(90deg,#f93 33%,#fff 33% 66%,#138808 66%)}
+.in{width:100%;border:1px solid #c5d1e3;border-radius:4px;padding:.5rem .65rem;background:#fff}
+.in:focus,button:focus-visible{outline:2px solid #1d4ed8;outline-offset:1px}
+.btn{padding:.5rem 1rem;border-radius:4px;font-weight:600;font-size:.875rem;background:#1e40af;color:#fff}
+.btn:hover{background:#1e3a8a}.btn.g{background:#fff;color:#1e40af;border:1px solid #1e40af}.btn.r{background:#b91c1c}.btn.ok{background:#15803d}.btn.p{background:#6d28d9}
+.card{background:#fff;border:1px solid #d5deec;border-radius:6px}
+th{text-align:left;background:#e3ebf7;font-weight:600}th,td{padding:.55rem .75rem;border-bottom:1px solid #e3e9f3}
+.q{width:2.5rem;height:2.5rem;border-radius:4px;font-weight:600;color:#fff;background:#9ca3af}
+.q.A{background:#16a34a}.q.N{background:#dc2626}.q.M{background:#7c3aed;border-radius:999px}.q.cur{outline:3px solid #1e40af;outline-offset:1px}
+</style></head>
+<body>
+<div id="app"></div><div id="modal"></div>
+<div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-2 rounded shadow z-50 text-sm"></div>
+<script>
+/* ===== DATA SERVICE LAYER =====
+   Everything below talks to data ONLY through Svc (load/list/save/remove).
+   To move to Firebase Firestore, re-implement those 4 methods with getDocs / setDoc / deleteDoc
+   (one Firestore collection per name in Svc.cols). No UI code needs to change. */
+const Svc={
+ cols:['users','cats','tests','qs','attempts'],cache:{},
+ async load(){ // Firestore: for each col -> getDocs(collection(db,c))
+  this.cols.forEach(c=>{const r=localStorage.getItem('ep_'+c);this.cache[c]=r?JSON.parse(r):null});
+  if(!this.cache.users){Object.assign(this.cache,seed());this.cols.forEach(c=>this.persist(c))}
+  this.cache.users.forEach(u=>{if(u.role==='student'&&u.status==='Active'&&u.valid<today())u.status='Expired'});this.persist('users')},
+ persist(c){localStorage.setItem('ep_'+c,JSON.stringify(this.cache[c]))},
+ list(c){return this.cache[c]},
+ async save(c,d){ // Firestore: setDoc(doc(db,c,d.id),d)
+  if(!d.id)d.id=uid();const l=this.cache[c],i=l.findIndex(x=>x.id===d.id);i<0?l.push(d):l[i]=d;this.persist(c);return d},
+ async remove(c,id){ // Firestore: deleteDoc(doc(db,c,id))
+  this.cache[c]=this.cache[c].filter(x=>x.id!==id);this.persist(c)}
+};
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9),today=()=>new Date().toISOString().slice(0,10);
+const L=c=>Svc.list(c),by=(c,id)=>L(c).find(x=>x.id===id);
+const PKG={'SSC All-Access':['SSC'],'RRB + State Govt':['RRB','STATE'],'Banking Pack':['BANK'],'All-Access':['*']},GROUPS=['SSC','RRB','STATE','BANK'];
+function seed(){
+ const dd=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+ const mk=(tid,r)=>r.map(x=>({id:uid(),tid,text:x[0],a:x[1],b:x[2],c:x[3],d:x[4],ans:x[5],exp:x[6]}));
+ return{users:[
+  {id:'u0',role:'admin',name:'Admin',login:'admin@portal.com',pass:'admin123'},
+  {id:'u1',role:'student',name:'Demo Student',login:'student@demo.com',pass:'student123',phone:'9876543210',pkg:'All-Access',valid:dd(90),status:'Active'},
+  {id:'u2',role:'student',name:'Riya Das',login:'riya@demo.com',pass:'riya123',phone:'9812345678',pkg:'SSC All-Access',valid:dd(-5),status:'Active'}],
+ cats:[{id:'c1',name:'SSC CGL',group:'SSC'},{id:'c2',name:'SSC GD',group:'SSC'},{id:'c3',name:'RRB NTPC',group:'RRB'},{id:'c4',name:'State PSC',group:'STATE'},{id:'c5',name:'Banking',group:'BANK'}],
+ tests:[{id:'t1',cat:'c1',title:'General Awareness Mock 1',dur:10,m:2,n:.5,st:'Published'},{id:'t2',cat:'c1',title:'Quantitative Aptitude Mock 1',dur:10,m:2,n:.5,st:'Published'},{id:'t3',cat:'c3',title:'Reasoning Mock 1',dur:8,m:1,n:.33,st:'Published'},{id:'t4',cat:'c5',title:'Banking English Mock 1 (draft)',dur:20,m:1,n:.25,st:'Draft'}],
+ qs:[...mk('t1',[
+  ['Which city is the capital of Assam?','Guwahati','Dispur','Jorhat','Silchar','B','Dispur, in Guwahati, is the capital of Assam.'],
+  ['Article 21 of the Constitution deals with?','Right to Equality','Protection of life and personal liberty','Freedom of religion','Right to property','B','Article 21 guarantees protection of life and personal liberty.'],
+  ['Which river is called the Sorrow of Bihar?','Ganga','Kosi','Gandak','Son','B','The Kosi changes course often and causes floods.'],
+  ['Who was the first President of India?','Rajendra Prasad','S. Radhakrishnan','Zakir Husain','V.V. Giri','A','Dr. Rajendra Prasad served from 1950 to 1962.'],
+  ['Kaziranga National Park is famous for?','Bengal tiger','One-horned rhinoceros','Asiatic lion','Snow leopard','B','Kaziranga holds most of the world\'s Indian one-horned rhinos.']]),
+ ...mk('t2',[
+  ['What is 15% of 240?','32','36','38','42','B','240 x 15/100 = 36.'],
+  ['Simple interest on Rs 5000 at 8% per year for 2 years?','600','700','800','900','C','SI = 5000 x 8 x 2 / 100 = 800.'],
+  ['A train at 60 km/h covers 150 km in?','2 h','2.5 h','3 h','3.5 h','B','Time = 150 / 60 = 2.5 hours.'],
+  ['Average of 10, 20, 30, 40, 50?','25','30','35','40','B','Sum 150 / 5 = 30.']]),
+ ...mk('t3',[
+  ['Find the next term: 2, 6, 12, 20, 30, ?','40','42','44','46','B','Differences are 4, 6, 8, 10, 12, so next is 42.'],
+  ['Doctor : Hospital :: Teacher : ?','School','Book','Class','Student','A','A doctor works in a hospital; a teacher in a school.'],
+  ['Find the odd one out.','Apple','Mango','Potato','Banana','C','Potato is a vegetable; the rest are fruits.']])],
+ attempts:[]}}
+let me=null,tab='',sq='',qc='',qt='',filt='all',ex=null,timer=null;
+const days=d=>Math.ceil((new Date(d)-new Date(today()))/864e5),stat=u=>u.status==='Suspended'?'Suspended':u.valid<today()?'Expired':'Active';
+const fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+const opts=(it,v)=>it.map(([a,b])=>`<option value="${esc(a)}" ${a===v?'selected':''}>${esc(b)}</option>`).join('');
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.remove('hidden');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.add('hidden'),3500)}
+const modal=h=>$('#modal').innerHTML=`<div class="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4"><div class="card p-5 w-full max-w-2xl max-h-[90vh] overflow-y-auto">${h}</div></div>`,closeM=()=>$('#modal').innerHTML='';
+function shell(tabs,body){$('#app').innerHTML=`<div class="stripe"></div><header class="bg-blue-900 text-white"><div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3"><div class="font-bold text-lg"><i class="fa-solid fa-graduation-cap mr-2"></i>ExamPrep Portal</div><div class="flex items-center gap-3 text-sm"><span class="hidden sm:inline">${esc(me.name)} (${me.role==='admin'?'Admin':'Student'})</span><button class="btn g !py-1" onclick="logout()">Logout</button></div></div><nav class="bg-blue-800"><div class="max-w-7xl mx-auto px-4 flex gap-1 overflow-x-auto">${tabs.map(([k,t,i])=>`<button onclick="setTab('${k}')" class="px-4 py-2 text-sm font-semibold whitespace-nowrap ${tab===k?'bg-white text-blue-900':'text-blue-100 hover:bg-blue-700'}"><i class="fa-solid ${i} mr-1"></i>${t}</button>`).join('')}</div></nav></header><main class="max-w-7xl mx-auto p-4">${body}</main>`}
+const setTab=k=>{tab=k;go()},aRe=()=>go();
+function go(){clearInterval(timer);if(!me)return loginPage();me.role==='admin'?admin():student()}
+function logout(){clearInterval(timer);me=null;tab='';localStorage.removeItem('ep_sess');go()}
+
+/* ===== LOGIN ===== */
+function loginPage(){$('#app').innerHTML=`<div class="stripe"></div><div class="min-h-screen grid lg:grid-cols-2"><section class="bg-blue-900 text-white p-8 lg:p-16 flex flex-col justify-center"><div class="text-4xl font-bold mb-4"><i class="fa-solid fa-graduation-cap mr-2"></i>ExamPrep Portal</div><p class="text-blue-100 text-lg max-w-md mb-6">Full-length mock tests for SSC, RRB, Banking and State Government exams, in the same computer-based format as exam day.</p><ul class="space-y-2 text-blue-100"><li><i class="fa-solid fa-check text-green-400 mr-2"></i>Live timer and colour-coded question palette</li><li><i class="fa-solid fa-check text-green-400 mr-2"></i>Negative marking and instant scorecard</li><li><i class="fa-solid fa-check text-green-400 mr-2"></i>Detailed solutions for every question</li></ul></section>
+<section class="p-6 lg:p-16 flex items-center"><div class="w-full max-w-md mx-auto card p-6"><h1 class="text-2xl font-bold">Member Login</h1><p class="text-sm bg-amber-50 border border-amber-300 text-amber-900 rounded p-3 my-3"><b>Paid Members Only:</b> Contact Admin to purchase your Student Login ID &amp; Password.</p>
+<form onsubmit="login(event)" class="space-y-3"><input class="in" id="lg" placeholder="User ID / Email" required autocomplete="username"><input class="in" id="pw" type="password" placeholder="Password" required autocomplete="current-password"><div id="lerr" class="text-red-700 text-sm"></div><button class="btn w-full">Login</button></form>
+<div class="mt-5 text-sm bg-blue-50 border border-blue-200 rounded p-3 space-y-2"><b>Demo credentials</b>${[['Admin','admin@portal.com','admin123'],['Student','student@demo.com','student123']].map(c=>`<div class="flex justify-between items-center gap-2"><span>${c[0]}: ${c[1]} / ${c[2]}</span><button class="btn g !py-1 !px-2" onclick="$('#lg').value='${c[1]}';$('#pw').value='${c[2]}'">Fill</button></div>`).join('')}</div></div></section></div>`}
+function login(e){e.preventDefault();const l=$('#lg').value.trim().toLowerCase(),u=L('users').find(x=>x.login.toLowerCase()===l&&x.pass===$('#pw').value),er=m=>$('#lerr').textContent=m;
+ if(!u)return er('Invalid User ID or password.');
+ if(u.role==='student'&&stat(u)!=='Active')return er(stat(u)==='Expired'?'Your subscription has expired. Contact Admin to renew.':'Your account is suspended. Contact Admin.');
+ me=u;tab='';localStorage.setItem('ep_sess',u.id);go()}
+
+/* ===== ADMIN ===== */
+function admin(){tab=tab||'ov';shell([['ov','Overview','fa-gauge'],['st','Students','fa-users'],['ex','Exams','fa-file-pen'],['qb','Question Bank','fa-circle-question']],{ov:aOv,st:aSt,ex:aEx,qb:aQb}[tab]());if(tab==='st')stRows()}
+function aOv(){const s=L('users').filter(u=>u.role==='student'),a=s.filter(u=>stat(u)==='Active').length;
+ const C=[['Paid Students',s.length,'fa-users','blue'],['Active Accounts',a,'fa-user-check','green'],['Expired / Suspended',s.length-a,'fa-user-clock','red'],['Exam Categories',L('cats').length,'fa-layer-group','indigo'],['Questions in Bank',L('qs').length,'fa-circle-question','amber'],['Tests Attempted',L('attempts').length,'fa-pen-to-square','purple']];
+ return`<h2 class="text-xl font-bold mb-3">Overview</h2><div class="grid grid-cols-2 lg:grid-cols-3 gap-3">${C.map(c=>`<div class="card p-4 border-l-4 border-${c[3]}-600"><i class="fa-solid ${c[2]} text-${c[3]}-600"></i><div class="text-3xl font-bold mt-1">${c[1]}</div><div class="text-sm text-slate-600">${c[0]}</div></div>`).join('')}</div>`}
+function aSt(){return`<div class="grid lg:grid-cols-3 gap-4"><form onsubmit="saveUser(event)" id="uf" class="card p-4 space-y-2 h-fit"><h2 class="font-bold">Student account</h2><input type="hidden" id="u_id"><input class="in" id="u_name" placeholder="Full name" required><input class="in" id="u_login" placeholder="Login ID / Email" required><input class="in" id="u_pass" placeholder="Password" required><input class="in" id="u_phone" placeholder="Phone" required>
+<label class="text-xs font-semibold">Exam package</label><select class="in" id="u_pkg">${opts(Object.keys(PKG).map(x=>[x,x]))}</select><label class="text-xs font-semibold">Subscription valid until</label><input type="date" class="in" id="u_valid" required><label class="text-xs font-semibold">Account status</label><select class="in" id="u_status"><option>Active</option><option>Suspended</option></select>
+<div class="flex gap-2"><button class="btn">Save account</button><button type="button" class="btn g" onclick="$('#uf').reset()">Clear</button></div></form>
+<div class="card lg:col-span-2 overflow-x-auto"><div class="p-3"><input class="in" placeholder="Search by name, login ID or phone" oninput="sq=this.value;stRows()"></div><table class="w-full text-sm"><thead><tr><th>Student</th><th>Package</th><th>Valid until</th><th>Status</th><th>Actions</th></tr></thead><tbody id="stb"></tbody></table></div></div>`}
+function stRows(){const q=sq.toLowerCase();$('#stb').innerHTML=L('users').filter(u=>u.role==='student'&&(u.name+u.login+u.phone).toLowerCase().includes(q)).map(u=>{const s=stat(u),c={Active:'bg-green-100 text-green-800',Suspended:'bg-red-100 text-red-800',Expired:'bg-amber-100 text-amber-800'}[s];
+ return`<tr><td><b>${esc(u.name)}</b><div class="text-xs text-slate-500">${esc(u.login)}</div><div class="text-xs text-slate-500">${esc(u.phone)}</div></td><td>${esc(u.pkg)}</td><td>${u.valid}</td><td><span class="px-2 py-0.5 rounded text-xs font-semibold ${c}">${s}</span></td><td class="whitespace-nowrap"><button class="btn ${s==='Active'?'r':'ok'} !py-1 !px-2" onclick="togUser('${u.id}')">${s==='Active'?'Suspend':'Activate'}</button> <button class="btn g !py-1 !px-2" title="Edit" onclick="editUser('${u.id}')"><i class="fa-solid fa-pen"></i></button> <button class="btn g !py-1 !px-2" title="Delete" onclick="delUser('${u.id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`}).join('')||'<tr><td colspan="5" class="text-center text-slate-500">No students found.</td></tr>'}
+async function saveUser(e){e.preventDefault();const g=k=>$('#u_'+k).value.trim(),id=g('id'),login=g('login');
+ if(L('users').some(u=>u.login.toLowerCase()===login.toLowerCase()&&u.id!==id))return toast('That Login ID is already in use.');
+ await Svc.save('users',{...(id?by('users',id):{}),id:id||undefined,role:'student',name:g('name'),login,pass:g('pass'),phone:g('phone'),pkg:g('pkg'),valid:g('valid'),status:g('status')});toast('Student account saved.');aRe()}
+function editUser(id){const u=by('users',id);Object.entries({id:u.id,name:u.name,login:u.login,pass:u.pass,phone:u.phone,pkg:u.pkg,valid:u.valid,status:u.status==='Suspended'?'Suspended':'Active'}).forEach(([k,v])=>$('#u_'+k).value=v);scrollTo(0,0)}
+async function togUser(id){const u=by('users',id);if(stat(u)==='Active')u.status='Suspended';else{if(u.valid<today())return toast('Validity date has passed. Edit the account and extend it first.');u.status='Active'}await Svc.save('users',u);stRows()}
+async function delUser(id){if(confirm('Delete this student account?')){await Svc.remove('users',id);stRows()}}
+function aEx(){const cats=L('cats');return`<div class="grid lg:grid-cols-3 gap-4"><div class="space-y-4"><form onsubmit="saveCat(event)" class="card p-4 space-y-2"><h2 class="font-bold">New exam category</h2><input class="in" id="c_name" placeholder="e.g. SSC CHSL" required><select class="in" id="c_group">${opts(GROUPS.map(g=>[g,g+' package group']))}</select><button class="btn">Add category</button></form>
+<div class="card p-4"><h3 class="font-bold mb-2">Categories</h3>${cats.map(c=>`<div class="flex justify-between items-center py-1 border-b text-sm"><span>${esc(c.name)} <span class="text-xs text-slate-500">${c.group}</span></span><button class="text-red-700" title="Delete" onclick="delCat('${c.id}')"><i class="fa-solid fa-trash"></i></button></div>`).join('')||'<p class="text-sm text-slate-500">No categories yet.</p>'}</div></div>
+<div class="lg:col-span-2 space-y-4"><form onsubmit="saveTest(event)" class="card p-4 grid sm:grid-cols-2 gap-2"><h2 class="font-bold sm:col-span-2">New mock test paper</h2><input class="in sm:col-span-2" id="t_title" placeholder="Paper title" required><select class="in" id="t_cat">${opts(cats.map(c=>[c.id,c.name]))}</select><input class="in" id="t_dur" type="number" min="1" placeholder="Duration (minutes)" required><input class="in" id="t_m" type="number" step="0.25" value="2" title="Marks per correct answer" required><input class="in" id="t_n" type="number" step="0.01" min="0" value="0.5" title="Negative marks per wrong answer" required><select class="in" id="t_st"><option>Published</option><option>Draft</option></select><button class="btn">Create paper</button></form>
+<div class="card overflow-x-auto"><table class="w-full text-sm"><thead><tr><th>Paper</th><th>Category</th><th>Time</th><th>Marking</th><th>Qs</th><th>Status</th><th></th></tr></thead><tbody>${L('tests').map(t=>`<tr><td>${esc(t.title)}</td><td>${esc(by('cats',t.cat)?.name)}</td><td>${t.dur} min</td><td>+${t.m} / -${t.n}</td><td>${L('qs').filter(q=>q.tid===t.id).length}</td><td><button class="btn ${t.st==='Published'?'ok':'g'} !py-1 !px-2" onclick="togTest('${t.id}')">${t.st}</button></td><td><button class="text-red-700" title="Delete" onclick="delTest('${t.id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div></div></div>`}
+async function saveCat(e){e.preventDefault();await Svc.save('cats',{name:$('#c_name').value.trim(),group:$('#c_group').value});aRe()}
+async function delCat(id){if(L('tests').some(t=>t.cat===id))return toast("Delete this category's test papers first.");await Svc.remove('cats',id);aRe()}
+async function saveTest(e){e.preventDefault();if(!$('#t_cat').value)return toast('Create an exam category first.');await Svc.save('tests',{title:$('#t_title').value.trim(),cat:$('#t_cat').value,dur:+$('#t_dur').value,m:+$('#t_m').value,n:+$('#t_n').value,st:$('#t_st').value});aRe()}
+async function togTest(id){const t=by('tests',id);t.st=t.st==='Published'?'Draft':'Published';await Svc.save('tests',t);aRe()}
+async function delTest(id){if(!confirm('Delete this paper and all its questions?'))return;for(const q of L('qs').filter(q=>q.tid===id))await Svc.remove('qs',q.id);await Svc.remove('tests',id);aRe()}
+function aQb(){const cats=L('cats');if(!by('cats',qc))qc=cats[0]?.id||'';const ts=L('tests').filter(t=>t.cat===qc);if(!ts.some(t=>t.id===qt))qt=ts[0]?.id||'';const qs=L('qs').filter(q=>q.tid===qt);
+ return`<div class="card p-4 mb-4 grid sm:grid-cols-3 gap-2 items-end"><div><label class="text-xs font-semibold">Exam category</label><select class="in" onchange="qc=this.value;qt='';aRe()">${opts(cats.map(c=>[c.id,c.name]),qc)}</select></div><div><label class="text-xs font-semibold">Mock test paper</label><select class="in" onchange="qt=this.value;aRe()">${opts(ts.map(t=>[t.id,t.title]),qt)}</select></div><button class="btn g" onclick="bulkM()"${qt?'':' disabled'}><i class="fa-solid fa-file-import mr-1"></i>Bulk import</button></div>
+${qt?`<div class="grid lg:grid-cols-5 gap-4"><form onsubmit="saveQ(event)" id="qf" class="card p-4 space-y-2 lg:col-span-2 h-fit"><h2 class="font-bold">Add / edit question</h2><input type="hidden" id="q_id"><textarea class="in" id="q_text" rows="3" placeholder="Question text" required></textarea>${'abcd'.split('').map(k=>`<input class="in" id="q_${k}" placeholder="Option ${k.toUpperCase()}" required>`).join('')}<select class="in" id="q_ans">${opts(['A','B','C','D'].map(x=>[x,'Correct option: '+x]))}</select><textarea class="in" id="q_exp" rows="3" placeholder="Detailed solution / explanation"></textarea><div class="flex gap-2"><button class="btn">Save question</button><button type="button" class="btn g" onclick="$('#qf').reset()">Clear</button></div></form>
+<div class="lg:col-span-3 space-y-2">${qs.map((q,i)=>`<div class="card p-3 text-sm"><div class="font-semibold">Q${i+1}. ${esc(q.text)}</div><div class="grid sm:grid-cols-2 gap-x-3 mt-1 text-slate-700">${'abcd'.split('').map(k=>`<div class="${q.ans===k.toUpperCase()?'text-green-700 font-semibold':''}">${k.toUpperCase()}. ${esc(q[k])}</div>`).join('')}</div><div class="mt-2 flex gap-2"><button class="btn g !py-1 !px-2" onclick="editQ('${q.id}')">Edit</button><button class="btn g !py-1 !px-2" onclick="delQ('${q.id}')">Delete</button></div></div>`).join('')||'<p class="text-slate-500">No questions in this paper yet. Add one or use Bulk import.</p>'}</div></div>`:'<p class="text-slate-600">Create a category and a mock test paper first (Exams tab).</p>'}`}
+async function saveQ(e){e.preventDefault();const g=k=>$('#q_'+k).value.trim();await Svc.save('qs',{id:g('id')||undefined,tid:qt,text:g('text'),a:g('a'),b:g('b'),c:g('c'),d:g('d'),ans:g('ans'),exp:g('exp')});toast('Question saved.');aRe()}
+function editQ(id){const q=by('qs',id);['id','text','a','b','c','d','ans','exp'].forEach(k=>$('#q_'+k).value=q[k]);scrollTo(0,0)}
+async function delQ(id){if(confirm('Delete this question?')){await Svc.remove('qs',id);aRe()}}
+function bulkM(){modal(`<h2 class="font-bold text-lg mb-2">Bulk import questions</h2><p class="text-sm text-slate-600 mb-2">Paste a JSON array, or one question per line as <b>Question|A|B|C|D|CorrectLetter|Explanation</b> (comma-separated lines also work; wrap text containing commas in double quotes).</p><pre class="text-xs bg-slate-100 p-2 rounded mb-2 overflow-x-auto">[{"q":"2+2?","a":"3","b":"4","c":"5","d":"6","correct":"B","exp":"2+2=4"}]
+What is 2+2?|3|4|5|6|B|Because 2+2=4</pre><textarea id="bk" rows="9" class="in" placeholder="Paste questions here"></textarea><div class="flex gap-2 mt-3"><button class="btn" onclick="importBulk()">Import</button><button class="btn g" onclick="closeM()">Cancel</button></div>`)}
+function csvLine(l){if(l.includes('|'))return l.split('|').map(s=>s.trim());const r=[];let c='',q=false;for(const ch of l){if(ch==='"')q=!q;else if(ch===','&&!q){r.push(c.trim());c=''}else c+=ch}r.push(c.trim());return r}
+async function importBulk(){const t=$('#bk').value.trim();let rows;
+ try{rows=t[0]==='['?JSON.parse(t).map(o=>({text:o.q||o.question,a:o.a,b:o.b,c:o.c,d:o.d,ans:String(o.correct||o.answer||'').toUpperCase(),exp:o.exp||o.explanation||''})):t.split('\n').filter(x=>x.trim()).map(l=>{const f=csvLine(l);return{text:f[0],a:f[1],b:f[2],c:f[3],d:f[4],ans:(f[5]||'').toUpperCase(),exp:f[6]||''}})}catch(x){return toast('Could not read the pasted text. Check the format.')}
+ const ok=rows.filter(r=>r.text&&r.a&&r.b&&r.c&&r.d&&'ABCD'.includes(r.ans)&&r.ans.length===1);
+ if(!ok.length)return toast('No valid questions found.');
+ for(const r of ok)await Svc.save('qs',{...r,tid:qt});closeM();toast(`Imported ${ok.length} question(s)`+(rows.length>ok.length?`, skipped ${rows.length-ok.length} invalid.`:'.'));aRe()}
+
+/* ===== STUDENT ===== */
+function student(){tab=tab||'dash';shell(sTabs,tab==='dash'?sDash():sHist())}
+const sTabs=[['dash','Dashboard','fa-gauge'],['hist','My Attempts','fa-clock-rotate-left']],mine=()=>L('attempts').filter(a=>a.uid===me.id).sort((a,b)=>b.at-a.at);
+function avail(){const g=PKG[me.pkg]||[];return L('tests').filter(t=>t.st==='Published'&&L('qs').some(q=>q.tid===t.id)&&(g.includes('*')||g.includes(by('cats',t.cat)?.group)))}
+function sDash(){const at=mine(),n=new Set(at.map(a=>a.tid)).size,avg=at.length?Math.round(at.reduce((s,a)=>s+Math.max(0,a.score/a.max*100),0)/at.length):0,att=at.reduce((s,a)=>s+a.correct+a.wrong,0),acc=att?Math.round(at.reduce((s,a)=>s+a.correct,0)/att*100):0;
+ const ts=avail(),cs=[...new Set(ts.map(t=>t.cat))].map(id=>by('cats',id)),shown=ts.filter(t=>filt==='all'||t.cat===filt);
+ const C=[['Papers attempted',n,'fa-file-circle-check'],['Average score',avg+'%','fa-chart-line'],['Overall accuracy',acc+'%','fa-bullseye'],['Account validity',Math.max(0,days(me.valid))+' days left','fa-hourglass-half']];
+ return`<h2 class="text-xl font-bold mb-3">Welcome, ${esc(me.name)}</h2><div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">${C.map(c=>`<div class="card p-4"><i class="fa-solid ${c[2]} text-blue-700"></i><div class="text-2xl font-bold mt-1">${c[1]}</div><div class="text-sm text-slate-600">${c[0]}</div></div>`).join('')}</div>
+<h2 class="text-lg font-bold mb-2">Available mock tests</h2><div class="flex flex-wrap gap-2 mb-3">${[['all','All'],...cs.map(c=>[c.id,c.name])].map(([k,t])=>`<button onclick="filt='${k}';go()" class="px-3 py-1 rounded-full text-sm font-semibold border ${filt===k?'bg-blue-800 text-white border-blue-800':'bg-white text-blue-800 border-blue-300'}">${esc(t)}</button>`).join('')}</div>
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${shown.map(t=>{const a=mine().find(x=>x.tid===t.id);return`<div class="card p-4 flex flex-col"><div class="text-xs text-blue-700 font-semibold">${esc(by('cats',t.cat)?.name)}</div><div class="font-bold">${esc(t.title)}</div><div class="text-sm text-slate-600 my-2">${L('qs').filter(q=>q.tid===t.id).length} questions, ${t.dur} min<br>+${t.m} per correct, -${t.n} per wrong</div>${a?`<div class="text-sm text-green-700 mb-2">Last score: ${a.score} / ${a.max}</div>`:''}<div class="mt-auto flex gap-2"><button class="btn" onclick="startT('${t.id}')">${a?'Retake':'Start Test'}</button>${a?`<button class="btn g" onclick="result('${a.id}')">View Result</button>`:''}</div></div>`}).join('')||'<p class="text-slate-600">No tests available for your package yet.</p>'}</div>`}
+function sHist(){const at=mine();return`<h2 class="text-xl font-bold mb-3">My Attempts</h2><div class="card overflow-x-auto"><table class="w-full text-sm"><thead><tr><th>Date</th><th>Paper</th><th>Score</th><th>Accuracy</th><th>Time</th><th></th></tr></thead><tbody>${at.map(a=>`<tr><td>${a.date}</td><td>${esc(a.title)}<div class="text-xs text-slate-500">${esc(a.cat)}</div></td><td>${a.score} / ${a.max}</td><td>${a.correct+a.wrong?Math.round(a.correct/(a.correct+a.wrong)*100):0}%</td><td>${fmt(a.time)}</td><td><button class="btn g !py-1" onclick="result('${a.id}')">View Report</button></td></tr>`).join('')||'<tr><td colspan="6" class="text-center text-slate-500">You have not attempted any paper yet.</td></tr>'}</tbody></table></div>`}
+
+/* ===== CBT EXAM ===== */
+function startT(id){const t=by('tests',id),qs=L('qs').filter(q=>q.tid===id);
+ if(!confirm(`${t.title}\n${qs.length} questions, ${t.dur} minutes.\n+${t.m} per correct answer, -${t.n} per wrong answer.\nThe exam submits automatically when the timer ends. Start now?`))return;
+ ex={t,qs,i:0,ans:{},vis:{0:1},mark:{},t0:Date.now(),end:Date.now()+t.dur*6e4};clearInterval(timer);timer=setInterval(tick,1000);exam()}
+function tick(){if(!ex)return;const s=Math.max(0,Math.round((ex.end-Date.now())/1000)),el=$('#tm');if(el)el.textContent=fmt(s);if(s<=0)submit(true)}
+const qst=i=>ex.mark[i]?'M':ex.ans[ex.qs[i].id]?'A':ex.vis[i]?'N':'';
+function exam(){const q=ex.qs[ex.i],n=ex.qs.length,cnt=k=>ex.qs.filter((_,i)=>qst(i)===k).length,nv=n-cnt('A')-cnt('N')-cnt('M'),sel=ex.ans[q.id];
+ const lg=(c,t,v)=>`<div><b class="inline-block w-4 h-4 ${c} rounded-sm align-middle"></b> ${t}: ${v}</div>`;
+ $('#app').innerHTML=`<div class="stripe"></div><header class="bg-blue-900 text-white px-4 py-2 flex flex-wrap items-center justify-between gap-2"><div><div class="font-bold">${esc(ex.t.title)}</div><div class="text-xs text-blue-200">Candidate: ${esc(me.name)} (ID: ${esc(me.login)})</div></div><div class="flex items-center gap-2"><div class="bg-white text-blue-900 rounded px-3 py-1 font-bold"><i class="fa-regular fa-clock mr-1"></i><span id="tm">--:--</span></div><button class="btn g !py-1 lg:hidden" onclick="$('#pal').classList.toggle('translate-x-full')">Palette</button></div></header>
+<div class="flex"><main class="flex-1 p-4 flex flex-col min-h-[85vh]"><div class="flex justify-between text-sm mb-2 font-semibold"><span>Question ${ex.i+1} of ${n}</span><span class="text-slate-600">+${ex.t.m} / -${ex.t.n}</span></div>
+<div class="card p-4 flex-1"><p class="font-semibold text-lg mb-4 whitespace-pre-wrap">${esc(q.text)}</p><div class="space-y-2">${'ABCD'.split('').map(k=>`<button onclick="pick('${k}')" class="w-full text-left flex gap-3 items-start p-3 rounded border ${sel===k?'bg-blue-50 border-blue-700':'border-slate-300 hover:bg-slate-50'}"><span class="mt-0.5 w-5 h-5 shrink-0 rounded-full border-2 ${sel===k?'bg-blue-700 border-blue-700':'border-slate-400'}"></span><span><b>${k}.</b> ${esc(q[k.toLowerCase()])}</span></button>`).join('')}</div></div>
+<div class="flex flex-wrap gap-2 mt-3"><button class="btn g" onclick="mv(-1)">Previous</button><button class="btn ok" onclick="saveNext()">Save &amp; Next</button><button class="btn p" onclick="markNext()">Mark for Review &amp; Next</button><button class="btn g" onclick="clr()">Clear Response</button><button class="btn r sm:ml-auto" onclick="submit()">Submit Exam</button></div></main>
+<aside id="pal" class="fixed lg:static inset-y-0 right-0 z-20 w-72 shrink-0 bg-white border-l border-slate-300 p-3 overflow-y-auto transition-transform translate-x-full lg:translate-x-0"><div class="grid grid-cols-2 gap-1 text-xs mb-3">${lg('bg-green-600','Answered',cnt('A'))}${lg('bg-red-600','Not answered',cnt('N'))}${lg('bg-violet-600','Marked',cnt('M'))}${lg('bg-gray-400','Not visited',nv)}</div><div class="grid grid-cols-5 gap-2">${ex.qs.map((_,i)=>`<button class="q ${qst(i)} ${i===ex.i?'cur':''}" onclick="jump(${i})">${i+1}</button>`).join('')}</div></aside></div>`;tick()}
+const pick=k=>{ex.ans[ex.qs[ex.i].id]=k;exam()},clr=()=>{delete ex.ans[ex.qs[ex.i].id];exam()},jump=i=>{ex.i=i;ex.vis[i]=1;exam()};
+function mv(d){ex.i=Math.min(ex.qs.length-1,Math.max(0,ex.i+d));ex.vis[ex.i]=1;exam()}
+const saveNext=()=>{delete ex.mark[ex.i];mv(1)},markNext=()=>{ex.mark[ex.i]=1;mv(1)};
+async function submit(auto){if(!ex)return;
+ if(!auto&&!confirm(`You answered ${ex.qs.filter(q=>ex.ans[q.id]).length} of ${ex.qs.length} questions. Submit the exam now?`))return;
+ clearInterval(timer);const e=ex;ex=null;let c=0,w=0,u=0;e.qs.forEach(q=>{const a=e.ans[q.id];!a?u++:a===q.ans?c++:w++});
+ const at=await Svc.save('attempts',{uid:me.id,tid:e.t.id,title:e.t.title,cat:by('cats',e.t.cat)?.name||'',m:e.t.m,n:e.t.n,at:Date.now(),date:today(),score:Math.round((c*e.t.m-w*e.t.n)*100)/100,max:e.qs.length*e.t.m,correct:c,wrong:w,un:u,time:Math.min(e.t.dur*60,Math.round((Date.now()-e.t0)/1000)),ans:e.ans,qs:e.qs});
+ if(auto)toast('Time is up. Your exam was submitted automatically.');result(at.id)}
+function result(id){const a=by('attempts',id),att=a.correct+a.wrong,acc=att?Math.round(a.correct/att*100):0;
+ const C=[['Marks scored',a.score+' / '+a.max,'blue'],['Correct',a.correct,'green'],['Wrong',a.wrong,'red'],['Unattempted',a.un,'slate'],['Accuracy',acc+'%','indigo'],['Time taken',fmt(a.time),'amber']];
+ shell(sTabs,`<h2 class="text-xl font-bold mb-3">${esc(a.title)}: Scorecard</h2><div class="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-2">${C.map(c=>`<div class="card p-3 border-t-4 border-${c[2]}-600"><div class="text-xl font-bold">${c[1]}</div><div class="text-xs text-slate-600">${c[0]}</div></div>`).join('')}</div>
+<p class="text-sm text-slate-600 mb-5">Marks = (${a.correct} x ${a.m}) - (${a.wrong} x ${a.n}) = ${a.score}</p><h3 class="text-lg font-bold mb-2">Answer key and solutions</h3>
+${a.qs.map((q,i)=>{const s=a.ans[q.id],r=!s?['Unattempted','text-slate-600']:s===q.ans?['Correct','text-green-700']:['Wrong','text-red-700'];return`<div class="card p-4 mb-3 text-sm"><div class="flex justify-between gap-3 font-semibold"><span>Q${i+1}. ${esc(q.text)}</span><span class="${r[1]}">${r[0]}</span></div><div class="mt-2 space-y-1">${'ABCD'.split('').map(k=>`<div class="px-2 py-1 rounded ${k===q.ans?'bg-green-100 text-green-900':k===s?'bg-red-100 text-red-900':''}">${k}. ${esc(q[k.toLowerCase()])}${k===s?' (your answer)':''}${k===q.ans?' (correct answer)':''}</div>`).join('')}</div><div class="mt-2"><b>Your answer:</b> ${s||'Not attempted'} &nbsp; <b>Correct answer:</b> ${q.ans}</div>${q.exp?`<div class="mt-2 bg-blue-50 border border-blue-200 rounded p-2"><b>Solution:</b> ${esc(q.exp)}</div>`:''}</div>`}).join('')}
+<button class="btn" onclick="setTab('dash')">Back to dashboard</button>`)}
+
+/* ===== BOOT ===== */
+(async()=>{await Svc.load();const id=localStorage.getItem('ep_sess'),u=id&&by('users',id);me=u&&(u.role==='admin'||stat(u)==='Active')?u:null;go()})();
+</script></body></html>
