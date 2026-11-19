@@ -15,6 +15,7 @@ exports.handler = async (event) => {
     if (!amount || amount < 100) return reply(400, { error: 'Invalid plan' });
     const order = await rzp.orders.create({ amount, currency: 'INR',
       receipt: user.uid.slice(0, 20) + '_' + Date.now(), notes: { plan, uid: user.uid } });
-    return reply(200, { order_id: order.id, amount: order.amount, currency: order.currency });
+    
+    return reply(200, { order_id: order.id, amount: order.amount, currency: order.currency, key_id: process.env.rzp_test_U258g08SRTxfuN });
   } catch (e) { return reply(500, { error: 'Could not create order' }); }
 };
